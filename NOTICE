@@ -1,0 +1,61 @@
+NOTICE
+======
+
+UCAS iClass Desktop is an independently maintained Windows desktop client for
+UCAS iClass / Qingxin Classroom. It is not an official desktop client of, and
+is not maintained, endorsed, sponsored, or affiliated with the projects named
+below.
+
+--------------------------------------------------------------------------------
+Source provenance / 来源与归属
+--------------------------------------------------------------------------------
+
+### 1. UCAS-Course-Sign-in
+
+  Name:       UCAS-Course-Sign-in
+  Author:     lccipher
+  Repository: https://github.com/lccipher/UCAS-Course-Sign-in
+  License:    GNU Affero General Public License v3.0 (AGPL-3.0)
+
+This project follows the public course-query, QR-code, and sign-in flow made
+available by the upstream project. Its copyright notices remain applicable.
+
+### 2. UCAS-Sign-in
+
+  Name:       UCAS-Sign-in
+  Author:     zhan-nine and contributors
+  Repository: https://github.com/zhan-nine/UCAS-Sign-in
+  License:    GNU Affero General Public License v3.0 (AGPL-3.0)
+
+The initial implementation of the following files was derived from the public
+Android-oriented UCAS-Sign-in project and was adapted for this independent
+desktop application:
+
+  core/src/main/kotlin/com/ucas/qingxin/signin/data/Models.kt
+  core/src/main/kotlin/com/ucas/qingxin/signin/network/QingxinApiService.kt
+  core/src/main/kotlin/com/ucas/qingxin/signin/qr/QrTimelineManager.kt
+  core/src/test/kotlin/com/ucas/qingxin/signin/QrTimelineLogicTest.kt
+
+No Android user-interface, widget, Android background-service, Android
+credential-storage, or Android scheduling code is included in this repository.
+
+--------------------------------------------------------------------------------
+Runtime dependencies / 运行时依赖
+--------------------------------------------------------------------------------
+
+The Gradle build declares Compose Multiplatform, Kotlin, OkHttp, Kotlin
+Coroutines, ZXing, and org.json. Their names, copyrights, and licenses remain
+the property of their respective owners. Dependency versions are declared in
+the Gradle build files for reproducible source builds.
+
+--------------------------------------------------------------------------------
+License of this repository / 本仓库许可证
+--------------------------------------------------------------------------------
+
+This repository, including modifications and additions, is distributed under
+the GNU Affero General Public License v3.0 or later. See LICENSE and
+LICENSES/AGPL-3.0.txt for the complete terms.
+
+Corresponding source for distributed Windows binaries is the public source
+repository for this project. Distributed packages include this NOTICE and the
+AGPL-3.0 license text.

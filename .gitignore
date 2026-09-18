@@ -1,0 +1,22 @@
+# Gradle and build output
+.gradle/
+build/
+**/build/
+
+# Local project toolchain and caches
+.tooling/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local credentials, sessions, and signing material
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.properties.local
