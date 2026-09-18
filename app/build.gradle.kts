@@ -27,6 +27,7 @@ val syncLicenses by tasks.registering(Copy::class) {
     from(rootProject.file("LICENSE")) { rename { "PROJECT-LICENSE.txt" } }
     from(rootProject.file("NOTICE")) { rename { "NOTICE.txt" } }
     from(rootProject.file("LICENSES/AGPL-3.0.txt"))
+    from(rootProject.file("LICENSES/Apache-2.0.txt"))
     into(licensesResourcesRoot.map { it.dir("licenses") })
 }
 
@@ -45,6 +46,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
     implementation("org.json:json:20240303")
     implementation("com.google.zxing:core:3.5.3")
+    implementation("net.java.dev.jna:jna:5.19.1")
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 compose.desktop {

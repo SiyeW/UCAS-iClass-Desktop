@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -68,6 +70,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.swing.Swing
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -94,6 +97,8 @@ fun main() = application {
 private data class DesktopState(
     val account: String = "",
     val password: String = "",
+    val rememberLogin: Boolean = false,
+    val savedCredentialsAvailable: Boolean = false,
     val session: SchoolSession? = null,
     val courses: List<Course> = emptyList(),
     val selectedCourseId: String? = null,
@@ -109,6 +114,7 @@ private data class DesktopState(
 private class DesktopController(
     private val api: QingxinApiService = QingxinApiService(),
     private val qrTimeline: QrTimelineManager = QrTimelineManager(api),
+    private val credentialStore: CredentialStore = WindowsDpapiCredentialStore(),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Swing)
     private val _state = MutableStateFlow(DesktopState())
@@ -116,13 +122,60 @@ private class DesktopController(
 
     private var qrJob: Job? = null
 
+    init {
+        loadSavedCredentials()
+    }
+
     fun setAccount(value: String) = _state.update { it.copy(account = value) }
 
     fun setPassword(value: String) = _state.update { it.copy(password = value) }
 
+    fun setRememberLogin(enabled: Boolean) {
+        if (enabled) {
+            _state.update { it.copy(rememberLogin = true) }
+            return
+        }
+
+        _state.update { it.copy(rememberLogin = false) }
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { credentialStore.clear() }
+            }.onSuccess {
+                _state.update {
+                    it.copy(
+                        savedCredentialsAvailable = false,
+                        message = "已清除本机保存的登录信息。",
+                    )
+                }
+            }.onFailure {
+                _state.update { it.copy(message = "无法清除本机保存的登录信息。") }
+            }
+        }
+    }
+
+    fun clearSavedCredentials() {
+        _state.update { it.copy(rememberLogin = false) }
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { credentialStore.clear() }
+            }.onSuccess {
+                _state.update {
+                    it.copy(
+                        password = "",
+                        savedCredentialsAvailable = false,
+                        message = "已清除本机保存的登录信息。",
+                    )
+                }
+            }.onFailure {
+                _state.update { it.copy(message = "无法清除本机保存的登录信息。") }
+            }
+        }
+    }
+
     fun login() {
         val account = state.value.account.trim()
         val password = state.value.password
+        val rememberLogin = state.value.rememberLogin
         if (account.isEmpty() || password.isEmpty()) {
             _state.update { it.copy(message = "请输入账号和密码。") }
             return
@@ -131,12 +184,26 @@ private class DesktopController(
             _state.update { it.copy(busy = true, message = "正在登录…") }
             runCatching {
                 val session = api.login(account, password)
+                val savedCredentials = if (rememberLogin) {
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            credentialStore.save(StoredCredentials(account, password))
+                        }
+                    }.isSuccess
+                } else {
+                    false
+                }
                 _state.update {
                     it.copy(
                         session = session,
                         password = "",
+                        savedCredentialsAvailable = it.savedCredentialsAvailable || savedCredentials,
                         busy = false,
-                        message = "登录成功，正在读取今日课程…",
+                        message = if (rememberLogin && !savedCredentials) {
+                            "登录成功，但无法保存本机登录信息。"
+                        } else {
+                            "登录成功，正在读取今日课程…"
+                        },
                     )
                 }
                 loadCourses(session)
@@ -240,12 +307,40 @@ private class DesktopController(
     fun logout() {
         qrJob?.cancel()
         qrTimeline.clear()
-        _state.value = DesktopState(account = state.value.account, message = "已退出，本地未保存会话或密码。")
+        val current = state.value
+        _state.value = DesktopState(
+            account = current.account,
+            rememberLogin = current.rememberLogin,
+            savedCredentialsAvailable = current.savedCredentialsAvailable,
+            message = "已退出；本次运行中的会话和密码已清除。",
+        )
     }
 
     fun close() {
         qrJob?.cancel()
         scope.cancel()
+    }
+
+    private fun loadSavedCredentials() {
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { credentialStore.load() }
+            }.onSuccess { credentials ->
+                if (credentials != null) {
+                    _state.update {
+                        it.copy(
+                            account = credentials.account,
+                            password = credentials.password,
+                            rememberLogin = true,
+                            savedCredentialsAvailable = true,
+                            message = "已加载本机保存的登录信息；请确认后登录。",
+                        )
+                    }
+                }
+            }.onFailure {
+                _state.update { it.copy(message = "无法读取本机保存的登录信息。") }
+            }
+        }
     }
 }
 
@@ -289,6 +384,9 @@ private fun AppHeader(state: DesktopState, controller: DesktopController) {
         }
         state.session?.let { session ->
             Text("学号 ${session.studentNo}", modifier = Modifier.padding(end = 16.dp))
+            if (state.savedCredentialsAvailable) {
+                TextButton(onClick = controller::clearSavedCredentials) { Text("清除本机登录") }
+            }
             OutlinedButton(onClick = controller::logout) { Text("退出") }
         }
     }
@@ -303,7 +401,7 @@ private fun LoginPanel(state: DesktopState, controller: DesktopController) {
         ) {
             Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("登录轻新课堂", fontSize = 22.sp, fontWeight = FontWeight.Medium)
-                Text("支持 SEP 邮箱或轻新课堂学号。首版不会把账号、密码或会话写入磁盘。")
+                Text("支持 SEP 邮箱或轻新课堂学号。默认不保存；可选仅为当前 Windows 账户加密保存登录信息。")
                 OutlinedTextField(
                     value = state.account,
                     onValueChange = controller::setAccount,
@@ -319,6 +417,18 @@ private fun LoginPanel(state: DesktopState, controller: DesktopController) {
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = state.rememberLogin,
+                        onCheckedChange = controller::setRememberLogin,
+                    )
+                    Text("在此 Windows 账户中记住登录")
+                }
+                if (state.savedCredentialsAvailable) {
+                    TextButton(onClick = controller::clearSavedCredentials) {
+                        Text("清除本机保存的登录信息")
+                    }
+                }
                 Button(
                     onClick = controller::login,
                     enabled = !state.busy,

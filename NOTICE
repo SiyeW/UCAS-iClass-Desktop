@@ -44,9 +44,20 @@ Runtime dependencies / 运行时依赖
 --------------------------------------------------------------------------------
 
 The Gradle build declares Compose Multiplatform, Kotlin, OkHttp, Kotlin
-Coroutines, ZXing, and org.json. Their names, copyrights, and licenses remain
-the property of their respective owners. Dependency versions are declared in
-the Gradle build files for reproducible source builds.
+Coroutines, ZXing, org.json, and Java Native Access (JNA). Their names,
+copyrights, and licenses remain the property of their respective owners.
+Dependency versions are declared in the Gradle build files for reproducible
+source builds.
+
+### Java Native Access (JNA)
+
+  Name:       Java Native Access (JNA)
+  Repository: https://github.com/java-native-access/jna
+  License:    Apache License 2.0 (JNA permits a choice between Apache-2.0 and LGPL-2.1-or-later; this project uses the Apache-2.0 choice)
+
+JNA is used only to invoke the Windows Data Protection API for the optional
+credential-store feature. The Apache-2.0 license text is included at
+LICENSES/Apache-2.0.txt and in distributed packages.
 
 --------------------------------------------------------------------------------
 License of this repository / 本仓库许可证
